@@ -27,18 +27,10 @@
   <!-- IDENTIFICAÇÃO -->
   <div class="card">
     <div class="card-titulo">Identificação</div>
-    <div class="grid g4" style="margin-bottom:14px">
+    <div class="grid g3" style="margin-bottom:14px">
       <div class="campo"><span>Data</span><input type="date" id="data"></div>
-      <div class="campo"><span>Revisão</span><input type="text" id="revisao" value="00"></div>
       <div class="campo"><span>KM</span><input type="text" id="km" placeholder="150.000" oninput="fmtKM(this)"></div>
       <div class="campo"><span>Departamento</span><input type="text" id="departamento" value="Frota / Manutenção"></div>
-    </div>
-    <div class="campo" style="margin-bottom:14px">
-      <span>Ordem de Serviço</span>
-      <div class="tipo-grupo">
-        <label class="tipo-op"><input type="checkbox" id="chk_gerar_os"><span>Gerar Ordem de Serviço junto com o Check List</span></label>
-        <span id="os-numero-tag" class="os-tag" style="display:none">OS Nº -----</span>
-      </div>
     </div>
     <div class="campo" style="margin-bottom:14px">
       <span>Tipo de Veículo (selecione um ou mais)</span>
@@ -97,6 +89,13 @@
     </div>
     <div class="grid g2" style="margin-top:12px">
       <div class="campo"><span>Conferente / Vistoriador</span><input type="text" id="vistoriador"></div>
+    </div>
+  </div>
+
+  <div class="campo os-check-wrap">
+    <div class="tipo-grupo">
+      <label class="tipo-op"><input type="checkbox" id="chk_gerar_os"><span>Gerar Ordem de Serviço junto com o Check List</span></label>
+      <span id="os-numero-tag" class="os-tag" style="display:none">OS Nº -----</span>
     </div>
   </div>
 
