@@ -570,13 +570,13 @@ function gerarPDF() {
     y = 17;
     doc.setLineWidth(.25); doc.setDrawColor(160);
     doc.rect(ML,y,cW,6);
-    const c1=[28,18,26,cW-72]; let x=ML;
+    const c1=[32,30,cW-62]; let x=ML;
     doc.setFontSize(6.2); doc.setFont('helvetica','bold'); doc.setTextColor(50,50,50);
-    ['DATA','REVISAO','PAGINA','DEPARTAMENTO'].forEach((h,i)=>{
-      doc.text(h,x+1,y+2.2); x+=c1[i]; if(i<3) doc.line(x,y,x,y+6);
+    ['DATA','PAGINA','DEPARTAMENTO'].forEach((h,i)=>{
+      doc.text(h,x+1,y+2.2); x+=c1[i]; if(i<2) doc.line(x,y,x,y+6);
     });
     x=ML; doc.setFont('helvetica','normal'); doc.setTextColor(15,15,15);
-    [gv('data'),gv('revisao')||'00','1 de 2',gv('departamento')||'Frota / Manutencao'].forEach((v,i)=>{
+    [gv('data'),'1 de 2',gv('departamento')||'Frota / Manutencao'].forEach((v,i)=>{
       doc.text(v,x+1,y+4.8); x+=c1[i];
     });
     y+=6.5;
@@ -749,98 +749,129 @@ function gerarPDF() {
   }
 
   /* ────────────────────────────────────────────────
-     ORDEM DE SERVIÇO (anexada ao mesmo PDF, mesmo estilo visual)
+     ORDEM DE SERVIÇO (anexada ao mesmo PDF, mesmo estilo visual do checklist)
      ──────────────────────────────────────────────── */
   function appendOrdemServico() {
     doc.addPage(); pag++;
     let y2 = 0;
 
-    doc.setFillColor(...AZUL); doc.rect(0,0,W,15,'F');
-    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+    // cabeçalho — mesmo padrão do checklist: fundo branco, título preto, linha, logo
+    doc.setFillColor(255,255,255); doc.rect(0,0,W,15,'F');
+    doc.setDrawColor(200); doc.setLineWidth(.3); doc.line(0,15,W,15);
+    doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
     doc.text('ORDEM DE SERVICO', ML+2, 9.5);
     try {
       const lg = document.getElementById('logo-pdf');
       if (lg && lg.complete) doc.addImage(lg,'PNG',W-ML-30,0.5,30,14);
     } catch(_) {}
-    y2 = 19;
+    y2 = 17;
 
-    doc.setFillColor(...CZS); doc.rect(ML,y2,cW,6,'F');
-    doc.setDrawColor(160); doc.setLineWidth(.25); doc.rect(ML,y2,cW,6);
-    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...AZUL);
-    doc.text('Nº OS: '+osNum, ML+2.5, y2+4);
+    // faixa com número da OS (mesmo estilo usado no cabeçalho do checklist)
+    doc.setLineWidth(.25); doc.setDrawColor(160); doc.rect(ML,y2,cW,6);
+    doc.setFillColor(...AZUL); doc.rect(ML,y2,22,6,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(255,255,255);
+    doc.text('Nº OS',ML+2,y2+3.9);
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.8); doc.setTextColor(...AZUL);
+    doc.text(osNum, ML+25, y2+4);
     const agora = new Date();
     const horaStr = String(agora.getHours()).padStart(2,'0')+':'+String(agora.getMinutes()).padStart(2,'0');
-    doc.setFont('helvetica','normal'); doc.setFontSize(7);
-    doc.text('Gerada em '+(gv('data')?gv('data').split('-').reverse().join('/'):'')+' as '+horaStr, ML+cW-2.5, y2+4, {align:'right'});
-    y2+=9;
+    doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(80,80,80);
+    doc.text('Gerada em '+(gv('data')?gv('data').split('-').reverse().join('/'):'')+' as '+horaStr, ML+cW-2, y2+4, {align:'right'});
+    y2 += 8.5;
 
     function secTitOS(t) {
       doc.setFillColor(...AZUL); doc.rect(ML,y2,cW,4.8,'F');
       doc.setFontSize(6.8); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
-      doc.text(t.toUpperCase(),ML+2.5,y2+3.3); y2+=6;
+      doc.text(t.toUpperCase(),ML+2.5,y2+3.3); y2+=5.5;
     }
-    function campoOS(label,val,x,w,yy) {
-      doc.setDrawColor(200); doc.setLineWidth(.2); doc.setFillColor(250,250,250);
-      doc.rect(x,yy,w,9,'FD');
-      doc.setFont('helvetica','bold'); doc.setFontSize(5.8); doc.setTextColor(120,120,120);
-      doc.text(label.toUpperCase(),x+2,yy+3.2);
-      doc.setFont('helvetica','normal'); doc.setFontSize(7.8); doc.setTextColor(15,15,15);
-      doc.text(String(val||'—'),x+2,yy+7);
+
+    // linha de campos — mesmo padrão da linha NOME MOTORISTA/PLACA do checklist:
+    // caixa única dividida por colunas, rótulo pequeno em cima e valor embaixo
+    function linhaCampos(campos, yy, h) {
+      h = h || 6;
+      doc.setLineWidth(.25); doc.setDrawColor(160); doc.rect(ML,yy,cW,h);
+      let x = ML;
+      for (let i=0;i<campos.length-1;i++){ x+=campos[i].w; doc.line(x,yy,x,yy+h); }
+      x = ML;
+      doc.setFont('helvetica','bold'); doc.setFontSize(6.2); doc.setTextColor(50,50,50);
+      campos.forEach(c=>{ doc.text(c.label,x+1,yy+2.2); x+=c.w; });
+      x = ML;
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(15,15,15);
+      campos.forEach(c=>{ doc.text(String(c.val||'—'),x+1,yy+4.8); x+=c.w; });
     }
 
     secTitOS('Identificacao');
     const rt = gc('tipo_rodotrem');
-    const c4 = cW/4;
-    campoOS('Data', gv('data')?gv('data').split('-').reverse().join('/'):'', ML, c4-2, y2);
-    campoOS('Motorista', gv('motorista'), ML+c4, c4*2-2, y2);
-    campoOS('Tipo', rt?'Rodotrem':'Vanderleia', ML+c4*3, c4-2, y2);
-    y2+=11;
+    linhaCampos([
+      { label:'DATA',      val: gv('data')?gv('data').split('-').reverse().join('/'):'', w:26 },
+      { label:'MOTORISTA', val: gv('motorista'), w:cW-26-32 },
+      { label:'TIPO',      val: rt?'Rodotrem':'Vanderleia', w:32 }
+    ], y2);
+    y2 += 7;
 
-    const c3 = cW/3;
-    campoOS('Placa Cavalo', gv('placa_cavalo'), ML, c3-2, y2);
-    campoOS(rt?'Placa SR1':'Placa Semi-Reboque', gv('placa_sr1'), ML+c3, c3-2, y2);
-    if (rt) campoOS('Placa SR2', gv('placa_sr2'), ML+c3*2, c3-2, y2);
-    y2+=13;
+    if (rt) {
+      linhaCampos([
+        { label:'PLACA CAVALO', val: gv('placa_cavalo'), w:cW/3 },
+        { label:'PLACA SR1',    val: gv('placa_sr1'),    w:cW/3 },
+        { label:'PLACA SR2',    val: gv('placa_sr2'),    w:cW/3 }
+      ], y2);
+    } else {
+      linhaCampos([
+        { label:'PLACA CAVALO',        val: gv('placa_cavalo'), w:cW/2 },
+        { label:'PLACA SEMI-REBOQUE',  val: gv('placa_sr1'),    w:cW/2 }
+      ], y2);
+    }
+    y2 += 10;
 
+    // blocos de serviço — mesmo padrão pautado (linhas cinza) da caixa de Observações do checklist
     const txt = textosServicoOS();
     function blocoServico(titulo, texto, altura) {
-      if (y2 + 6 + altura > 275) { doc.addPage(); pag++; y2=10; }
-      doc.setFillColor(...AZUL); doc.rect(ML,y2,cW,5,'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(6.8); doc.setTextColor(255,255,255);
-      doc.text(titulo.toUpperCase(), ML+2.5, y2+3.5);
-      y2+=5;
-      doc.setDrawColor(180); doc.setLineWidth(.2); doc.setFillColor(252,252,252);
-      doc.rect(ML,y2,cW,altura,'FD');
-      doc.setFont('helvetica','normal'); doc.setFontSize(7.2); doc.setTextColor(15,15,15);
-      const linhas = doc.splitTextToSize(texto || 'Nenhum item NOK registrado.', cW-6);
-      doc.text(linhas, ML+3, y2+4.5);
+      if (y2 + 6 + altura > 275) { doc.addPage(); pag++; y2 = 10; }
+      doc.setFillColor(...CZS); doc.rect(ML,y2,cW,3.8,'F');
+      doc.setFontSize(6.2); doc.setFont('helvetica','bold'); doc.setTextColor(...AZUL);
+      doc.text(titulo.toUpperCase(),ML+2.5,y2+2.7);
+      y2 += 4.4;
+
+      doc.setFillColor(255,255,255); doc.setDrawColor(170); doc.setLineWidth(.2);
+      doc.rect(ML,y2,cW,altura);
+      for (let i=1;i*4<altura-2;i++) doc.setDrawColor(220), doc.line(ML+2,y2+i*4,ML+cW-2,y2+i*4);
+
+      doc.setFont('helvetica','normal'); doc.setFontSize(6.8); doc.setTextColor(15,15,15);
+      const linhas = doc.splitTextToSize(texto || 'NENHUM ITEM NOK REGISTRADO.', cW-6);
+      let ty = y2+4;
+      for (const ln of linhas) {
+        if (ty > y2+altura-3) break;
+        doc.text(ln, ML+3, ty); ty += 4;
+      }
       y2 += altura + 4;
     }
 
     secTitOS('Descricao dos Servicos (NOK e Observacoes)');
-    blocoServico('Cavalo Mecanico - '+(gv('placa_cavalo')||'S/N'), txt.cavalo, 34);
+    blocoServico('Cavalo Mecanico - '+(gv('placa_cavalo')||'S/N'), txt.cavalo, 36);
     if (rt) {
       blocoServico('Semi-Reboque 1 - '+(gv('placa_sr1')||'S/N'), txt.sr1, 28);
       blocoServico('Semi-Reboque 2 - '+(gv('placa_sr2')||'S/N'), txt.sr2, 28);
     } else {
-      blocoServico('Semi-Reboque - '+(gv('placa_sr1')||'S/N'), txt.sr1, 34);
+      blocoServico('Semi-Reboque - '+(gv('placa_sr1')||'S/N'), txt.sr1, 36);
     }
 
-    if (y2 + 34 > 275) { doc.addPage(); pag++; y2=10; }
+    // assinaturas — mesmo padrão visual da caixa de assinaturas do checklist
+    if (y2 + 34 > 275) { doc.addPage(); pag++; y2 = 10; }
     secTitOS('Assinaturas');
     const bW=(cW-8)/2, bH=30;
-    doc.setDrawColor(160); doc.setLineWidth(.2); doc.setFillColor(255,255,255);
+    doc.setFillColor(255,255,255); doc.setDrawColor(160); doc.setLineWidth(.2);
     doc.rect(ML,y2,bW,bH); doc.rect(ML+bW+8,y2,bW,bH);
+    const iH = bH-10;
     if (temTraco('canvas_mot'))
-      doc.addImage(document.getElementById('canvas_mot').toDataURL('image/png'),'PNG',ML+2,y2+1,bW-4,bH-11);
+      doc.addImage(document.getElementById('canvas_mot').toDataURL('image/png'),'PNG',ML+2,y2+1,bW-4,iH);
     doc.setDrawColor(100); doc.setLineWidth(.3);
     doc.line(ML+2,y2+bH-7,ML+bW-2,y2+bH-7);
     doc.line(ML+bW+10,y2+bH-7,ML+cW-2,y2+bH-7);
-    doc.setFontSize(6.5); doc.setFont('helvetica','normal'); doc.setTextColor(55,55,55);
+    doc.setFontSize(6.2); doc.setFont('helvetica','normal'); doc.setTextColor(55,55,55);
     doc.text('Motorista',ML+2,y2+bH-4.5);
     doc.text('Nome: '+gv('motorista'),ML+2,y2+bH-1.5);
     doc.text('Chefe de Manutencao',ML+bW+10,y2+bH-4.5);
-    y2+=bH+8;
+    y2 += bH+8;
 
     doc.setDrawColor(200); doc.setLineWidth(.2); doc.line(ML,y2,ML+cW,y2);
     doc.setFont('helvetica','normal'); doc.setFontSize(6); doc.setTextColor(140,140,140);
