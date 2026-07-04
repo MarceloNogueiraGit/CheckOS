@@ -319,21 +319,48 @@ function extraPDF(n, d) {
    ══════════════════════════════════════════════════════ */
 const SEP = '\u200B';
 
-function coletarNOK(grupos, filtro) {
+function linhaNOKPadrao(n, d) {
+  let txt = desc(d).toUpperCase();
+  const ex = extraSite(n, d);
+  if (ex) txt += ' ' + ex.toUpperCase();
+  txt += ' NOK';
+  return `${n}. ${txt}`;
+}
+
+// Lê o texto automático atual e devolve, por bloco (CAVALO/CARRETA 1/CARRETA 2/CARRETA),
+// um mapa {numeroDoItem: linhaCompleta} — usado pra preservar anotações manuais
+// que o usuário colou no final de uma linha (ex: "7. FAROIS... NOK - trocar lâmpada").
+function linhasExistentesPorBloco(autoRaw) {
+  const blocos = {};
+  let atual = null;
+  autoRaw.split('\n').forEach(linhaRaw => {
+    const l = linhaRaw.trim();
+    if (l === 'CAVALO' || l === 'CARRETA 1' || l === 'CARRETA 2' || l === 'CARRETA') {
+      atual = l; blocos[atual] = blocos[atual] || {};
+      return;
+    }
+    if (atual && l) {
+      const m = l.match(/^(\d+)\.\s/);
+      if (m) blocos[atual][m[1]] = l;
+    }
+  });
+  return blocos;
+}
+
+function coletarNOK(grupos, filtro, blocoNome, blocosExistentes) {
+  const existentes = (blocosExistentes && blocosExistentes[blocoNome]) || {};
   const linhas = [];
   for (const grp of grupos) {
     (ITENS[grp] || []).forEach(([n, d]) => {
-      if (isTaco(d)) return; // 
+      if (isTaco(d)) return;
       if (!document.getElementById(`i${n}_nok`)?.checked) return;
       if (filtro !== undefined) {
         const atr = nokCarreta[n];
         if (atr !== filtro && atr !== 'AMBAS') return;
       }
-      let txt = desc(d).toUpperCase();
-      const ex = extraSite(n, d);
-      if (ex) txt += ' ' + ex.toUpperCase();
-      txt += ' NOK';
-      linhas.push(`${n}. ${txt}`);
+      // se já existe uma linha desse item nesse bloco (pode ter anotação manual
+      // colada pelo usuário), reaproveita ela em vez de gerar uma nova do zero
+      linhas.push(existentes[n] || linhaNOKPadrao(n, d));
     });
   }
   return linhas;
@@ -341,25 +368,28 @@ function coletarNOK(grupos, filtro) {
 
 function atualizarObs() {
   const rt = gc('tipo_rodotrem');
-  const nokCav = coletarNOK(GRP_CAV, undefined);
+  const el = document.getElementById('observacoes');
+  const atual = el.value;
+
+  const manual    = atual.includes(SEP) ? atual.split(SEP)[0].trimEnd() : atual.trimEnd();
+  const autoAntes = atual.includes(SEP) ? (atual.split(SEP)[1] || '') : '';
+  const blocosExistentes = linhasExistentesPorBloco(autoAntes);
+
+  const nokCav = coletarNOK(GRP_CAV, undefined, 'CAVALO', blocosExistentes);
   let auto = '';
   if (nokCav.length) auto += 'CAVALO\n' + nokCav.join('\n') + '\n\n';
 
   if (rt) {
-    const n1 = coletarNOK(GRP_SR, 'CARRETA 1');
-    const n2 = coletarNOK(GRP_SR, 'CARRETA 2');
+    const n1 = coletarNOK(GRP_SR, 'CARRETA 1', 'CARRETA 1', blocosExistentes);
+    const n2 = coletarNOK(GRP_SR, 'CARRETA 2', 'CARRETA 2', blocosExistentes);
     if (n1.length) auto += 'CARRETA 1\n' + n1.join('\n') + '\n\n';
     if (n2.length) auto += 'CARRETA 2\n' + n2.join('\n') + '\n\n';
   } else {
-    const nSR = coletarNOK(GRP_SR, undefined);
+    const nSR = coletarNOK(GRP_SR, undefined, 'CARRETA', blocosExistentes);
     if (nSR.length) auto += 'CARRETA\n' + nSR.join('\n') + '\n\n';
   }
 
-  const el = document.getElementById('observacoes');
-
   // preserva cursor — só atualiza se o conteúdo automático mudou
-  const atual  = el.value;
-  const manual = atual.includes(SEP) ? atual.split(SEP)[0].trimEnd() : atual.trimEnd();
   const novoAuto = auto.trim() ? SEP + auto.trimEnd() : '';
   const novoVal  = (manual ? manual + '\n\n' : '') + novoAuto;
   const limpo    = novoVal.startsWith('\n') ? novoVal.trimStart() : novoVal;
@@ -367,7 +397,6 @@ function atualizarObs() {
   // guarda posição do cursor antes de alterar
   const start = el.selectionStart;
   const end   = el.selectionEnd;
-  const velha = el.value;
 
   el.value = limpo;
 
