@@ -416,21 +416,42 @@ function obsManual() {
   return manual.replace(new RegExp(SEP, 'g'), '').trim();
 }
 
+// Lê o texto JÁ PRONTO da caixa de Observações (o mesmo que sai no PDF do
+// checklist) e separa por grupo (CAVALO / CARRETA 1 / CARRETA 2 / CARRETA).
+// Não reconsulta checkboxes — garante que a OS bata 100% com o checklist gerado.
+function parseObsPorGrupo() {
+  const val    = gv('observacoes');
+  const manual = obsManual();
+  const autoRaw = val.includes(SEP) ? val.split(SEP)[1] || '' : '';
+
+  const blocos = { 'CAVALO':'', 'CARRETA 1':'', 'CARRETA 2':'', 'CARRETA':'' };
+  let atual = null;
+  autoRaw.split('\n').forEach(linhaRaw => {
+    const l = linhaRaw.trim();
+    if (l === 'CAVALO' || l === 'CARRETA 1' || l === 'CARRETA 2' || l === 'CARRETA') {
+      atual = l;
+      return;
+    }
+    if (atual && l) blocos[atual] += (blocos[atual] ? '\n' : '') + l;
+  });
+
+  return { manual, blocos };
+}
+
 // Monta os textos de serviço (NOK + observações manuais) para cada bloco da OS
 function textosServicoOS() {
-  const rt      = gc('tipo_rodotrem');
-  const manual  = obsManual();
-  const nokCav  = coletarNOK(GRP_CAV, undefined);
+  const rt = gc('tipo_rodotrem');
+  const { manual, blocos } = parseObsPorGrupo();
 
-  let cavalo = nokCav.join('\n');
+  let cavalo = blocos['CAVALO'];
   if (manual) cavalo += (cavalo ? '\n\n' : '') + 'OBSERVAÇÕES GERAIS:\n' + manual;
 
   let sr1 = '', sr2 = '';
   if (rt) {
-    sr1 = coletarNOK(GRP_SR, 'CARRETA 1').join('\n');
-    sr2 = coletarNOK(GRP_SR, 'CARRETA 2').join('\n');
+    sr1 = blocos['CARRETA 1'];
+    sr2 = blocos['CARRETA 2'];
   } else {
-    sr1 = coletarNOK(GRP_SR, undefined).join('\n');
+    sr1 = blocos['CARRETA'];
   }
   return { cavalo, sr1, sr2, rodotrem: rt };
 }
